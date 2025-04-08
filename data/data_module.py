@@ -24,9 +24,9 @@ class MyCustomDataModule(pl.LightningDataModule):
         This method is called by Lightning with the proper stage.
         """
         # Create dataset instances for training, validation, and testing
-        self.train_dataset = MyDataset(data_path=self.data_dir)
-        self.val_dataset = MyDataset(data_path=self.data_dir)
-        self.test_dataset = MyDataset(data_path=self.data_dir)
+        self.train_dataset = MyCustomDataset(data_path=self.data_dir)
+        self.val_dataset = MyCustomDataset(data_path=self.data_dir)
+        self.test_dataset = MyCustomDataset(data_path=self.data_dir)
 
     def train_dataloader(self):
         return DataLoader(
