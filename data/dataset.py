@@ -1,10 +1,10 @@
 import glob
 import os
-import re
+import torch
 import numpy as np
 from torch.utils.data import Dataset
 from random import randrange
-from PIL import Image
+from torchvision.io import decode_image
 
 
 # Dataset Class
@@ -19,8 +19,9 @@ class StyleTransferDataset(Dataset):
         self.num_styles_per_image = num_styles_per_image
         self.style_paths = {}
 
+        #   If need to extract information from file name
+        #   import re
         #   pattern = re.compile(r'^(.*?)_(.*?)_(\d+)\.jpg$')  
-        #   if need to extract information from file name
         #   e.g. match = pattern.match(filename); artist_name = match.group(3)
 
         ##   STYLE FILEPATHS FOR RANDOM SAMPLING   ##
@@ -56,7 +57,10 @@ class StyleTransferDataset(Dataset):
 
     def __getitem__(self, idx):
         # Retrieve a sample by index
-        style = Image.open(self.style_paths[self.all_inds[idx]])
-        content = Image.open(self.content_paths[randrange(self.total_content_images)])
-        sample = {"style_image": style, "content_image": content}
+        style = decode_image(self.style_paths[self.all_inds[idx]])
+        content = decode_image(self.content_paths[randrange(self.total_content_images)])
+        sample = {
+            "style_image": style.to(torch.float32),
+            "content_image": content.to(torch.float32)
+        }
         return sample
