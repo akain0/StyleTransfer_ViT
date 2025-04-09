@@ -1,28 +1,62 @@
-import torch
+import glob
+import os
+import re
+import numpy as np
 from torch.utils.data import Dataset
-import pytorch_lightning as pl
+from random import randrange
+from PIL import Image
+
 
 # Dataset Class
-class MyCustomDataset(Dataset):
+class StyleTransferDataset(Dataset):
     def __init__(
-      self,
-      data_path=None
+        self,
+        style_path,
+        content_path,
+        num_styles_per_image=100
     ):
-        """
-        Args:
-            data_path (str, optional): Path to the dataset.
-        """
         super().__init__()
-        # Initialize your dataset here
-        self.data_path = data_path
-        # For example, load your data into self.samples
-        self.samples = []  # placeholder list
+        self.num_styles_per_image = num_styles_per_image
+        self.style_paths = {}
+
+        #   pattern = re.compile(r'^(.*?)_(.*?)_(\d+)\.jpg$')  
+        #   if need to extract information from file name
+        #   e.g. match = pattern.match(filename); artist_name = match.group(3)
+
+        ##   STYLE FILEPATHS FOR RANDOM SAMPLING   ##
+        # Use glob to get all .jpg files in the folder
+        self.style_paths = {}   # storing style image paths
+        style_paths = glob.glob(os.path.join(style_path, '*.jpg'))
+        self.total_style_images = len(style_paths)
+        for i, filepath in enumerate(style_paths):
+            self.style_paths[i] = filepath
+            i += 1
+
+        ##   CONTENT FILEPATHS  ##
+        # Use glob to get all .jpg files in the folder
+        self.content_paths = {}   # storing style image paths
+        content_paths = glob.glob(os.path.join(content_path, '*.jpg'))
+        self.total_content_images = len(content_paths)
+        for i, filepath in enumerate(content_paths):
+            self.content_paths[i] = filepath
+        
+        # Construct indices for content images (repeating self.num_styles_per_image times)
+        self.all_inds = self._build_indices()
+    
+    def _build_indices(self):
+        # Construct indices for the dataset class
+        base_inds = np.arange(self.total_content_images)
+        all_inds = np.repeat(base_inds, self.num_styles_per_image)
+        np.random.shuffle(all_inds)   # shuffles in-place
+        return all_inds
 
     def __len__(self):
         # Return the total number of samples
-        return len(self.samples)
+        return len(self.all_inds)
 
     def __getitem__(self, idx):
-        # Retrieve a sample by index and apply any transformations if needed
-        sample = self.samples[idx]
+        # Retrieve a sample by index
+        style = Image.open(self.style_paths[self.all_inds[idx]])
+        content = Image.open(self.content_paths[randrange(self.total_content_images)])
+        sample = {"style_image": style, "content_image": content}
         return sample
