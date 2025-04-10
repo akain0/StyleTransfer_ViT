@@ -11,7 +11,7 @@ def collate_fn(batch):
     content = torch.stack([sample["content_image"] for sample in batch])
     return {"style": style, "content": content}
 
-class MyCustomDataModule(pl.LightningDataModule):
+class StyleTransferDM(pl.LightningDataModule):
     """
     Custom data module for style transfer.
     """
