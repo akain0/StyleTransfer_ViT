@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 class TransformerDecoder(nn.Module):
     '''
@@ -49,7 +50,7 @@ class TransformerDecoder(nn.Module):
     
 
 class CNNDecoder(nn.Module):
-    def __init__(self, embed_dim, img_height, img_width):
+    def __init__(self, embed_dim):
         """
         Upsampling decoder to output the stylized image.
         The input to this layer are the transformer's outputs
@@ -57,15 +58,10 @@ class CNNDecoder(nn.Module):
             The transformer output has a shape of (batch, (H*W)/64, embed_dim).
             This implies that when the features are reshaped into a grid,
             the grid size will be (H/8) x (W/8), since (H*W/64) = (H/8)*(W/8).
+            To reshape the content, we will utilize the fact that the content is
+            always square.
         """
-        super(CNNDecoder, self).__init__()
-        self.img_height = img_height
-        self.img_width = img_width
-
-        # Calculate grid dimensions (m = 8)
-        self.grid_h = img_height // 8
-        self.grid_w = img_width // 8
-        
+        super(CNNDecoder, self).__init__()        
         # First layer: maintains embed_dim channels; upscales by 2.
         self.layer1 = nn.Sequential(
             nn.Conv2d(embed_dim, embed_dim, kernel_size=3, padding=1),
@@ -92,9 +88,11 @@ class CNNDecoder(nn.Module):
         Forward pass of the decoder.
         """
         batch_size, num_tokens, channels = x.shape
+        # Calculate grid dimensions (m = 8)
+        grid_w = grid_h = int(np.sqrt(num_tokens))
         
         # Reshape flattened tokens
-        x = x.view(batch_size, self.grid_h, self.grid_w, channels)  # Shape: (batch, grid_h, grid_w, C)
+        x = x.view(batch_size, grid_h, grid_w, channels)  # Shape: (batch, grid_h, grid_w, C)
         # Permute to channel-first format
         x = x.permute(0, 3, 1, 2)   # Shape: (batch, C, grid_h, grid_w)
         
