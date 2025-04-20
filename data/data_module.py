@@ -15,7 +15,6 @@ class StyleTransferDM(pl.LightningDataModule):
     """
     Custom data module for style transfer.
     """
-
     def __init__(
       self,
       style_dir,
