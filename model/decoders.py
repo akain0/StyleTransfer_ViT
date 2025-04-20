@@ -6,12 +6,14 @@ class TransformerDecoder(nn.Module):
     Transformer Decoder class to be leveraged for decoding the target token sequences
     based on encoded memory representations from the encoder.
     '''
-    def __init__(self,
-                 d_model: int = 512,
-                 nhead: int = 8,
-                 dim_feedforward: int = 2048,
-                 dropout: float = 0.1,
-                 n_layers: int = 6):
+    def __init__(
+        self,
+        d_model = 512,
+        nhead = 8,
+        dim_feedforward = 2048,
+        dropout = 0.1,
+        n_layers = 6
+    ):
         super(TransformerDecoder, self).__init__()
         self.decoder_layer = nn.TransformerDecoderLayer(
             d_model=d_model,
@@ -26,13 +28,15 @@ class TransformerDecoder(nn.Module):
             num_layers=n_layers
         )
 
-    def forward(self,
-                target_tokens,
-                memory,
-                tgt_mask=None,
-                memory_mask=None,
-                tgt_key_padding_mask=None,
-                memory_key_padding_mask=None):
+    def forward(
+        self,
+        target_tokens,
+        memory,
+        tgt_mask=None,
+        memory_mask=None,
+        tgt_key_padding_mask=None,
+        memory_key_padding_mask=None
+    ):
         out = self.transformer_decoder(
             tgt=target_tokens,
             memory=memory,
