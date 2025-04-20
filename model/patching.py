@@ -19,7 +19,7 @@ class ContentPatching(nn.Module):
             align_corners=False
         )
 
-        patches = self.patch_embed(src_img)
+        patches = self.patch_embed(resized_img)
         patches = patches.flatten(2)
         patch_embeddings = patches.transpose(1,2)
 
