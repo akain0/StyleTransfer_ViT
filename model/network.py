@@ -3,8 +3,9 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from model.patching import ContentPatching, StylePatching
 from model.cape import CAPE
-from model.encoder import ContentTransformerEncoder, StyleTransformerEncoder
-from model.decoder import TransformerDecoder, CNNDecoder
+from model.encoders import ContentTransformerEncoder, StyleTransformerEncoder
+from model.decoders import TransformerDecoder, CNNDecoder
+from model.vgg import VGGFeatureExtractor
 
 class StyTR2(pl.LightningModule):
     """
@@ -172,7 +173,7 @@ class StyTR2(pl.LightningModule):
         f_s = self.vgg_extractor(style)
         f_c = self.vgg_extractor(content)
         f_t = self.vgg_extractor(stylized)
-        c_loss = F.mse_loss(f_t[self.vgg_layers[-1], f_c[self.vgg_layers[-1])
+        c_loss = F.mse_loss(f_t[self.vgg_layers[-1]], f_c[self.vgg_layers[-1]])
 
         # Style loss
         s_loss = 0.0
