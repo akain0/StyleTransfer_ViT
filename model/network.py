@@ -142,11 +142,23 @@ class StyTR2(pl.LightningModule):
         f = feat.view(b, c, h * w)
         g = torch.bmm(f, f.transpose(1, 2))
         return g / (c * h * w)
+        
+    def calc_stats(self, feat, eps=1e-5):
+        """
+        Compute channel‐wise mean and stddev over spatial dims.
+        """
+        b, c = feat.size()[:2]
+        # flatten H*W
+        feat_flat = feat.view(b, c, -1)
+        var = feat_flat.var(dim=2) + eps
+        std = var.sqrt().view(b, c, 1, 1)
+        mean = feat_flat.mean(dim=2).view(b, c, 1, 1)
+        return mean, std
 
     def loss_fn(self, style, content, stylized):
         """
+        Use this in case the current implementation does not work:
         Compute content (MSE) and style (Gram-MSE) losses.
-        """
         f_s = self.vgg_extractor(style)
         f_c = self.vgg_extractor(content)
         f_t = self.vgg_extractor(stylized)
@@ -156,7 +168,21 @@ class StyTR2(pl.LightningModule):
             g_s = self.gram_matrix(f_s[l])
             g_t = self.gram_matrix(f_t[l])
             s_loss += F.mse_loss(g_t, g_s)
-        return self.content_loss_weight * c_loss + self.style_loss_weight * s_loss
+        return (self.content_loss_weight * c_loss) + (self.style_loss_weight * s_loss)
+        """
+        # Implementation from paper, except for identity loss
+        f_s = self.vgg_extractor(style)
+        f_c = self.vgg_extractor(content)
+        f_t = self.vgg_extractor(stylized)
+        c_loss = F.mse_loss(f_t[self.content_layer], f_c[self.content_layer])
+        s_loss = 0.0
+        for l in self.style_layers:
+            mean_s, std_s = self.calc_stats(f_s[l])
+            mean_t, std_t = self.calc_stats(f_t[l])
+            s_loss += F.mse_loss(mean_t, mean_s)
+            s_loss += F.mse_loss(std_t, std_s)
+        return (self.content_loss_weight * c_loss) + (self.style_loss_weight * s_loss)
+        
 
     def training_step(self, batch, _):
         """Compute/log training loss."""
