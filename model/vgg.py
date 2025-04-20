@@ -17,8 +17,8 @@ class VGGFeatureExtractor(nn.Module):
             "style_2": 6,
             "style_3": 11,
             "style_4": 20,
-            "style_5": 29,
-            "content_1": 22
+            "style_5": 22,
+            "content_1": 29
         }
         self.idx_to_name = {idx: name for name, idx in self.layer_idx.items()}
         for p in self.vgg.parameters():
