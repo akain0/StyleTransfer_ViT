@@ -90,12 +90,6 @@ class CNNDecoder(nn.Module):
     def forward(self, x):
         """
         Forward pass of the decoder.
-        
-        Args:
-            x (torch.Tensor): Input tensor of shape (batch, (H*W)/64, embed_dim)
-            
-        Returns:
-            torch.Tensor: Output tensor of shape (batch, 3, H, W)
         """
         batch_size, num_tokens, channels = x.shape
         
