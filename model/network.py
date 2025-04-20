@@ -18,6 +18,7 @@ class StyTR2(pl.LightningModule):
         self,
         # Universal
         d_model=512,
+        # VGG
         img_height=224,
         img_width=224,
         # Patching
@@ -77,11 +78,7 @@ class StyTR2(pl.LightningModule):
             dropout=dropout_dec,
             n_layers=n_layers_dec
         )
-        self.cnn_decoder = CNNDecoder(
-            embed_dim=d_model,
-            img_height=img_height,
-            img_width=img_width
-        )
+        self.cnn_decoder = CNNDecoder(embed_dim=d_model)
 
         # VGG
         self.vgg_extractor = VGGFeatureExtractor()
@@ -97,27 +94,17 @@ class StyTR2(pl.LightningModule):
         self.betas = betas
 
         # Test outputs
-        self._test_outputs = []
+        self._test_outputs = {
+            "style": [],
+            "content": [],
+            "stylized": []
+        }
         self.test_results = None
 
     def forward(self, style, content):
         """
         Stylize content using style.
         """
-        # Standardize image dimensions
-        style = F.interpolate(
-            style,
-            (self.img_height, self.img_width),
-            mode="bicubic",
-            align_corners=False
-        )
-        content = F.interpolate(
-            content,
-            (self.img_height, self.img_width),
-            mode="bicubic",
-            align_corners=False
-        )
-        
         # Patching
         c_patches = self.content_patcher(content)
         s_patches = self.style_patcher(style)
@@ -130,11 +117,12 @@ class StyTR2(pl.LightningModule):
         # Decoder
         tokens = self.decoder(target_tokens=c_enc, memory=s_enc)
         stylized = self.cnn_decoder(tokens)
-        return style, content, stylized
+        return stylized
     
     def gram_matrix(self, feat):
         """
         Compute channel correlation (Gram) matrix of a feature map.
+        Not being used currently.
         """
         b, c, h, w = feat.shape
         f = feat.view(b, c, h * w)
@@ -146,7 +134,6 @@ class StyTR2(pl.LightningModule):
         Compute channel‐wise mean and stddev over spatial dims.
         """
         b, c = feat.size()[:2]
-        # flatten H*W
         feat_flat = feat.view(b, c, -1)
         var = feat_flat.var(dim=2) + eps
         std = var.sqrt().view(b, c, 1, 1)
@@ -169,10 +156,42 @@ class StyTR2(pl.LightningModule):
                 s_loss += F.mse_loss(g_t, g_s)
             return (self.content_loss_weight * c_loss) + (self.style_loss_weight * s_loss)
         """
+        # Standardize image dimensions for VGG
+        style_vgg = F.interpolate(
+            style,
+            (self.img_height, self.img_width),
+            mode="bicubic",
+            align_corners=False
+        )
+        content_vgg = F.interpolate(
+            content,
+            (self.img_height, self.img_width),
+            mode="bicubic",
+            align_corners=False
+        )
+        stylized_vgg = F.interpolate(
+            stylized,
+            (self.img_height, self.img_width),
+            mode="bicubic",
+            align_corners=False
+        )
+        identity_style_vgg = F.interpolate(
+            identity_style,
+            (self.img_height, self.img_width),
+            mode="bicubic",
+            align_corners=False
+        )
+        identity_content_vgg = F.interpolate(
+            identity_content,
+            (self.img_height, self.img_width),
+            mode="bicubic",
+            align_corners=False
+        )
+        
         # Content loss
-        f_s = self.vgg_extractor(style)
-        f_c = self.vgg_extractor(content)
-        f_t = self.vgg_extractor(stylized)
+        f_s = self.vgg_extractor(style_vgg)
+        f_c = self.vgg_extractor(content_vgg)
+        f_t = self.vgg_extractor(stylized_vgg)
         c_loss = F.mse_loss(f_t[self.vgg_layers[-1]], f_c[self.vgg_layers[-1]])
 
         # Style loss
@@ -187,8 +206,8 @@ class StyTR2(pl.LightningModule):
         i_loss1 = F.mse_loss(identity_style, style) + F.mse_loss(identity_content, content)
 
         # Identity loss 2
-        i_s = self.vgg_extractor(identity_style)
-        i_c = self.vgg_extractor(identity_content)
+        i_s = self.vgg_extractor(identity_style_vgg)
+        i_c = self.vgg_extractor(identity_content_vgg)
         i_loss2 = 0.0
         for l in self.vgg_layers:
             i_loss2 += F.mse_loss(i_s[l], f_s[l]) + F.mse_loss(i_c[l], f_c[l])
@@ -202,9 +221,10 @@ class StyTR2(pl.LightningModule):
     def training_step(self, batch, _):
         """Compute/log training loss."""
         style, content = batch["style"], batch["content"]
-        _, _, identity_style = self(style, style)
-        _, _, identity_content = self(content, content)
-        style, content, stylized = self(style, content)
+        stylized = self(style, content)
+        identity_style = self(style, style)
+        identity_content = self(content, content)
+        
         loss = self.loss_fn(style, content, stylized, identity_style, identity_content)
         self.log("train_loss", loss)
         return loss
@@ -212,9 +232,10 @@ class StyTR2(pl.LightningModule):
     def validation_step(self, batch, _):
         """Compute/log validation loss."""
         style, content = batch["style"], batch["content"]
-        _, _, identity_style = self(style, style)
-        _, _, identity_content = self(content, content)
-        style, content, stylized = self(style, content)
+        stylized = self(style, content)
+        identity_style = self(style, style)
+        identity_content = self(content, content)
+        
         loss = self.loss_fn(style, content, stylized, identity_style, identity_content)
         self.log("val_loss", loss, prog_bar=True)
         return loss
@@ -222,13 +243,19 @@ class StyTR2(pl.LightningModule):
     def test_step(self, batch, _):
         """Collect stylized outputs."""
         style, content = batch["style"], batch["content"]
-        style, content, stylized = self(style, content)
-        self._test_outputs.append(stylized)
+        stylized = self(style, content)
+        
+        # Store test results
+        self._test_outputs["style"].append(style)
+        self._test_outputs["content"].append(content)
+        self._test_outputs["stylized"].append(stylized)
 
     def on_test_epoch_end(self):
         """Concatenate test outputs into test_results."""
-        self.test_results = torch.cat(self._test_outputs, dim=0)
-        self._test_outputs.clear()
+        self.test_results = {}
+        for k in self._test_outputs.keys():
+            self.test_results[k] = torch.cat(self._test_outputs[k], dim=0)
+            self._test_outputs[k].clear()
 
     def configure_optimizers(self):
         """Setup optimizer and LR scheduler."""
