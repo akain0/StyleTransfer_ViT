@@ -29,7 +29,7 @@ class StyTR2(pl.LightningModule):
         dropout_content=0.1,
         n_layers_content=6,
         # Style Encoder
-        patch_size_style=32,
+        patch_size_style=8,
         n_head_style=8,
         dim_feedforward_style=2048,
         dropout_style=0.1,
