@@ -6,6 +6,7 @@ from model.cape import CAPE
 from model.encoders import ContentTransformerEncoder, StyleTransformerEncoder
 from model.decoders import TransformerDecoder, CNNDecoder
 from model.vgg import VGGFeatureExtractor
+import gc
 
 class StyTR2(pl.LightningModule):
     """
@@ -108,15 +109,23 @@ class StyTR2(pl.LightningModule):
         # Patching
         c_patches = self.content_patcher(content)
         s_patches = self.style_patcher(style)
-        c_emb = self.cape(c_patches)
+        c_patches = self.cape(c_patches)
 
         # Encoder
-        c_enc = self.content_encoder(c_emb)
+        c_enc = self.content_encoder(c_patches)
         s_enc = self.style_encoder(s_patches)
+        del c_patches, s_patches  # clear up space
 
         # Decoder
         tokens = self.decoder(target_tokens=c_enc, memory=s_enc)
+        del c_enc, s_enc  # clear up space
+        
         stylized = self.cnn_decoder(tokens)
+        del tokens  # clear up space
+        
+        # Force cleanup memory
+        gc.collect()
+        torch.cuda.empty_cache()
         return stylized
     
     def gram_matrix(self, feat):
@@ -156,62 +165,80 @@ class StyTR2(pl.LightningModule):
                 s_loss += F.mse_loss(g_t, g_s)
             return (self.content_loss_weight * c_loss) + (self.style_loss_weight * s_loss)
         """
-        # Standardize image dimensions for VGG
-        style_vgg = F.interpolate(
-            style,
-            (self.img_height, self.img_width),
-            mode="bicubic",
-            align_corners=False
-        )
-        content_vgg = F.interpolate(
-            content,
-            (self.img_height, self.img_width),
-            mode="bicubic",
-            align_corners=False
-        )
+        device = style.device
+        
+        # Content loss
+        with torch.no_grad():  # no grad because they are targets
+            style_vgg = F.interpolate(
+                style,
+                (self.img_height, self.img_width),
+                mode="bicubic",
+                align_corners=False
+            )  # standardize image dimensions for VGG
+            content_vgg = F.interpolate(
+                content,
+                (self.img_height, self.img_width),
+                mode="bicubic",
+                align_corners=False
+            )  # standardize image dimensions for VGG
+            f_s = self.vgg_extractor(style_vgg)
+            f_c = self.vgg_extractor(content_vgg)
+            del style_vgg, content_vgg  # clear up space
+
         stylized_vgg = F.interpolate(
             stylized,
             (self.img_height, self.img_width),
             mode="bicubic",
             align_corners=False
-        )
+        )  # standardize image dimensions for VGG
+        
+        f_t = self.vgg_extractor(stylized_vgg)
+            
+        # move to CPU to free GPU memory
+        f_s = {l: v.detach().cpu() for l, v in f_s.items()}
+        f_c = {l: v.detach().cpu() for l, v in f_c.items()}
+
+        c_loss = F.mse_loss(f_t[self.vgg_layers[-1]], f_c[self.vgg_layers[-1]].to(device))
+        
+        # Style loss
+        s_loss = 0.0
+        for l in self.vgg_layers:
+            mean_s, std_s = self.calc_stats(f_s[l].to(device))
+            mean_t, std_t = self.calc_stats(f_t[l])
+            s_loss += F.mse_loss(mean_t, mean_s)
+            s_loss += F.mse_loss(std_t, std_s)
+        del stylized_vgg, f_t  # clear up space
+        
+        # Identity loss 1
+        i_loss1 = F.mse_loss(identity_style, style) + F.mse_loss(identity_content, content)
+
+        # Identity loss 2
         identity_style_vgg = F.interpolate(
             identity_style,
             (self.img_height, self.img_width),
             mode="bicubic",
             align_corners=False
-        )
+        )  # standardize image dimensions for VGG
         identity_content_vgg = F.interpolate(
             identity_content,
             (self.img_height, self.img_width),
             mode="bicubic",
             align_corners=False
-        )
+        )  # standardize image dimensions for VGG
         
-        # Content loss
-        f_s = self.vgg_extractor(style_vgg)
-        f_c = self.vgg_extractor(content_vgg)
-        f_t = self.vgg_extractor(stylized_vgg)
-        c_loss = F.mse_loss(f_t[self.vgg_layers[-1]], f_c[self.vgg_layers[-1]])
-
-        # Style loss
-        s_loss = 0.0
-        for l in self.vgg_layers:
-            mean_s, std_s = self.calc_stats(f_s[l])
-            mean_t, std_t = self.calc_stats(f_t[l])
-            s_loss += F.mse_loss(mean_t, mean_s)
-            s_loss += F.mse_loss(std_t, std_s)
-
-        # Identity loss 1
-        i_loss1 = F.mse_loss(identity_style, style) + F.mse_loss(identity_content, content)
-
-        # Identity loss 2
         i_s = self.vgg_extractor(identity_style_vgg)
         i_c = self.vgg_extractor(identity_content_vgg)
+        del identity_style_vgg, identity_content_vgg  # clear up space
+        
         i_loss2 = 0.0
         for l in self.vgg_layers:
-            i_loss2 += F.mse_loss(i_s[l], f_s[l]) + F.mse_loss(i_c[l], f_c[l])
-
+            i_loss2 += F.mse_loss(i_s[l], f_s[l].to(device)) + F.mse_loss(i_c[l], f_c[l].to(device))
+        del f_s, f_c, i_s, i_c  # clear up space
+        
+        # Force cleanup memory
+        gc.collect()
+        torch.cuda.empty_cache()
+        
         # Total loss
         loss_main = (self.lambdas[0] * c_loss) + (self.lambdas[1] * s_loss) + \
                 (self.lambdas[2] * i_loss1) + (self.lambdas[3] * i_loss2)
