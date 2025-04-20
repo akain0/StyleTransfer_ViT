@@ -155,17 +155,18 @@ class StyTR2(pl.LightningModule):
     def loss_fn(self, style, content, stylized, identity_style, identity_content):
         """
         Use this in case the current implementation does not work:
-        Compute content (MSE) and style (Gram-MSE) losses.
-        f_s = self.vgg_extractor(style)
-        f_c = self.vgg_extractor(content)
-        f_t = self.vgg_extractor(stylized)
-        c_loss = F.mse_loss(f_t[self.content_layer], f_c[self.content_layer])
-        s_loss = 0.0
-        for l in self.style_layers:
-            g_s = self.gram_matrix(f_s[l])
-            g_t = self.gram_matrix(f_t[l])
-            s_loss += F.mse_loss(g_t, g_s)
-        return (self.content_loss_weight * c_loss) + (self.style_loss_weight * s_loss)
+        def loss_fn(self, style, content, stylized):
+            # Compute content (MSE) and style (Gram-MSE) losses.
+            f_s = self.vgg_extractor(style)
+            f_c = self.vgg_extractor(content)
+            f_t = self.vgg_extractor(stylized)
+            c_loss = F.mse_loss(f_t[self.content_layer], f_c[self.content_layer])
+            s_loss = 0.0
+            for l in self.style_layers:
+                g_s = self.gram_matrix(f_s[l])
+                g_t = self.gram_matrix(f_t[l])
+                s_loss += F.mse_loss(g_t, g_s)
+            return (self.content_loss_weight * c_loss) + (self.style_loss_weight * s_loss)
         """
         # Content loss
         f_s = self.vgg_extractor(style)
@@ -200,16 +201,20 @@ class StyTR2(pl.LightningModule):
     def training_step(self, batch, _):
         """Compute/log training loss."""
         style, content = batch["style"], batch["content"]
+        _, _, identity_style = self(style, style)
+        _, _, identity_content = self(content, content)
         style, content, stylized = self(style, content)
-        loss = self.loss_fn(style, content, stylized)
+        loss = self.loss_fn(style, content, stylized, identity_style, identity_content)
         self.log("train_loss", loss)
         return loss
 
     def validation_step(self, batch, _):
         """Compute/log validation loss."""
         style, content = batch["style"], batch["content"]
+        _, _, identity_style = self(style, style)
+        _, _, identity_content = self(content, content)
         style, content, stylized = self(style, content)
-        loss = self.loss_fn(style, content, stylized)
+        loss = self.loss_fn(style, content, stylized, identity_style, identity_content)
         self.log("val_loss", loss, prog_bar=True)
         return loss
 
