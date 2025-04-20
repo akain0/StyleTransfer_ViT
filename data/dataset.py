@@ -10,7 +10,6 @@ class StyleTransferDataset(Dataset):
     """
     Dataset class for style transfer training.
     """
-
     def __init__(
         self,
         style_dir,
