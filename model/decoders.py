@@ -51,11 +51,8 @@ class TransformerDecoder(nn.Module):
 class CNNDecoder(nn.Module):
     def __init__(self, embed_dim, img_height, img_width):
         """
-        Args:
-            embed_dim (int): Number of channels from the transformer decoder.
-            img_height (int): The target image height (H).
-            img_width (int): The target image width (W).
-        
+        Upsampling decoder to output the stylized image.
+        The input to this layer are the transformer's outputs
         Note:
             The transformer output has a shape of (batch, (H*W)/64, embed_dim).
             This implies that when the features are reshaped into a grid,
