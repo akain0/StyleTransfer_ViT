@@ -7,11 +7,11 @@ class TransformerDecoder(nn.Module):
     based on encoded memory representations from the encoder.
     '''
     def __init__(self,
-                 d_model: int = 512,
-                 nhead: int = 8,
-                 dim_feedforward: int = 2048,
-                 dropout: float = 0.1,
-                 n_layers: int = 6):
+                 d_model = 512,
+                 nhead = 8,
+                 dim_feedforward = 2048,
+                 dropout = 0.1,
+                 n_layers = 6):
         super(TransformerDecoder, self).__init__()
         self.decoder_layer = nn.TransformerDecoderLayer(
             d_model=d_model,
