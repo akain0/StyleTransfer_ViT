@@ -15,25 +15,31 @@ class StyTR2(pl.LightningModule):
     """
     def __init__(
         self,
+        # Universal
         d_model=512,
+        img_height=224,
+        img_width=224,
+        # Patchig
         n=18,
         s=1,
+        # Content Encoder
         patch_size_content=8,
         n_head_content=8,
         dim_feedforward_content=2048,
         dropout_content=0.1,
         n_layers_content=6,
+        # Style Encoder
         patch_size_style=32,
         n_head_style=8,
         dim_feedforward_style=2048,
         dropout_style=0.1,
         n_layers_style=6,
+        # Decoder
         n_head_dec=8,
         dim_feedforward_dec=2048,
         dropout_dec=0.1,
         n_layers_dec=6,
-        img_height=224,
-        img_width=224,
+        # Training
         lr=1e-3,
         style_loss_weight=1.0,
         content_loss_weight=1.0,
