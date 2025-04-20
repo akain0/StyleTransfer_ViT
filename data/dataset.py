@@ -1,6 +1,7 @@
 import glob
 import os
 import torch
+import torch.nn.functional as F
 import numpy as np
 from torch.utils.data import Dataset
 from random import randrange
@@ -59,9 +60,16 @@ class StyleTransferDataset(Dataset):
         Return a sample with style and random content image.
         """
         style = decode_image(self.style_paths[self.all_inds[idx]])
-        content = decode_image(self.content_paths[randrange(self.total_content_images)])
+        content = decode_image(self.content_paths[randrange(self.total_content_images)]).to(torch.float32)
+        # Downsample content
+        content = F.interpolate(
+            content.unsqueeze(0),
+            (128, 128),
+            mode="bicubic",
+            align_corners=False
+        ).squeeze(0)
         sample = {
             "style_image": style.to(torch.float32),
-            "content_image": content.to(torch.float32)
+            "content_image": content
         }
         return sample
