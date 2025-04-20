@@ -4,7 +4,7 @@ import torch.nn.functional as F
 class ContentPatching(nn.Module):
     '''
     Content Patching class for patching content image into patches (i,j)
-    Content images will be fed in as batch x 3 x 150 x 150
+    Content images will be fed in as batch x 3 x 128 x 128 (downsampled in dataset class)
     '''
     def __init__(
         self,
