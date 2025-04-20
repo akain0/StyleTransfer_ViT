@@ -11,7 +11,7 @@ class VGGFeatureExtractor(nn.Module):
     """
     def __init__(self):
         super().__init__()
-        self.vgg = models.vgg19(pretrained=True).features
+        self.vgg = models.vgg19(weights=models.VGG19_Weights.DEFAULT).features
         self.layer_idx = {
             "state_1": 1,
             "state_2": 6,
