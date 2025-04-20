@@ -161,7 +161,7 @@ class StyTR2(pl.LightningModule):
     def training_step(self, batch, _):
         """Compute/log training loss."""
         style, content = batch["style"], batch["content"]
-        _, _, stylized = self(style, content)
+        style, content, stylized = self(style, content)
         loss = self.loss_fn(style, content, stylized)
         self.log("train_loss", loss)
         return loss
@@ -169,7 +169,7 @@ class StyTR2(pl.LightningModule):
     def validation_step(self, batch, _):
         """Compute/log validation loss."""
         style, content = batch["style"], batch["content"]
-        _, _, stylized = self(style, content)
+        style, content, stylized = self(style, content)
         loss = self.loss_fn(style, content, stylized)
         self.log("val_loss", loss, prog_bar=True)
         return loss
@@ -177,7 +177,7 @@ class StyTR2(pl.LightningModule):
     def test_step(self, batch, _):
         """Collect stylized outputs."""
         style, content = batch["style"], batch["content"]
-        _, _, stylized = self(style, content)
+        style, content, stylized = self(style, content)
         self._test_outputs.append(stylized)
 
     def on_test_epoch_end(self):
