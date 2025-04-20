@@ -41,8 +41,7 @@ class StyTR2(pl.LightningModule):
         n_layers_dec=6,
         # Training
         lr=1e-3,
-        style_loss_weight=1.0,
-        content_loss_weight=1.0,
+        lambdas=[10, 7, 50, 1],
         lr_patience=5,
         lr_decay=0.1,
         betas=(0.9, 0.999)
@@ -85,14 +84,12 @@ class StyTR2(pl.LightningModule):
 
         # VGG
         self.vgg_extractor = VGGFeatureExtractor()
-        self.content_layer = "content_1"
-        self.style_layers = ["style_1", "style_2", "style_3", "style_4", "style_5"]
+        self.vgg_layers = ["state_1", "state_2", "state_3", "state_4", "state_5", "state_6"]
 
         # Training params
         self.img_height = img_height
         self.img_width = img_width
-        self.style_loss_weight = style_loss_weight
-        self.content_loss_weight = content_loss_weight
+        self.lambdas = lambdas
         self.lr = lr
         self.lr_patience = lr_patience
         self.lr_decay = lr_decay
@@ -155,7 +152,7 @@ class StyTR2(pl.LightningModule):
         mean = feat_flat.mean(dim=2).view(b, c, 1, 1)
         return mean, std
 
-    def loss_fn(self, style, content, stylized):
+    def loss_fn(self, style, content, stylized, identity_style, identity_content):
         """
         Use this in case the current implementation does not work:
         Compute content (MSE) and style (Gram-MSE) losses.
@@ -170,18 +167,34 @@ class StyTR2(pl.LightningModule):
             s_loss += F.mse_loss(g_t, g_s)
         return (self.content_loss_weight * c_loss) + (self.style_loss_weight * s_loss)
         """
-        # Implementation from paper, except for identity loss
+        # Content loss
         f_s = self.vgg_extractor(style)
         f_c = self.vgg_extractor(content)
         f_t = self.vgg_extractor(stylized)
-        c_loss = F.mse_loss(f_t[self.content_layer], f_c[self.content_layer])
+        c_loss = F.mse_loss(f_t[self.vgg_layers[-1], f_c[self.vgg_layers[-1])
+
+        # Style loss
         s_loss = 0.0
-        for l in self.style_layers:
+        for l in self.vgg_layers:
             mean_s, std_s = self.calc_stats(f_s[l])
             mean_t, std_t = self.calc_stats(f_t[l])
             s_loss += F.mse_loss(mean_t, mean_s)
             s_loss += F.mse_loss(std_t, std_s)
-        return (self.content_loss_weight * c_loss) + (self.style_loss_weight * s_loss)
+
+        # Identity loss 1
+        i_loss1 = F.mse_loss(identity_style, style) + F.mse_loss(identity_content, content)
+
+        # Identity loss 2
+        i_s = self.vgg_extractor(identity_style)
+        i_c = self.vgg_extractor(identity_content)
+        i_loss2 = 0.0
+        for l in self.vgg_layers:
+            i_loss2 += F.mse_loss(i_s[l], f_s[l]) + F.mse_loss(i_c[l], f_c[l])
+
+        # Total loss
+        loss_main = (self.lambdas[0] * c_loss) + (self.lambdas[1] * s_loss) + \
+                (self.lambdas[2] * i_loss1) + (self.lambdas[3] * i_loss2)
+        return loss_main
         
 
     def training_step(self, batch, _):
