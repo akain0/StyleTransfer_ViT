@@ -20,7 +20,7 @@ class StyTR2(pl.LightningModule):
         d_model=512,
         img_height=224,
         img_width=224,
-        # Patchig
+        # Patching
         n=18,
         s=1,
         # Content Encoder
