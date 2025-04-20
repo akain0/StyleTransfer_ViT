@@ -13,12 +13,12 @@ class VGGFeatureExtractor(nn.Module):
         super().__init__()
         self.vgg = models.vgg19(pretrained=True).features
         self.layer_idx = {
-            "style_1": 1,
-            "style_2": 6,
-            "style_3": 11,
-            "style_4": 20,
-            "style_5": 22,
-            "content_1": 29
+            "state_1": 1,
+            "state_2": 6,
+            "state_3": 11,
+            "state_4": 20,
+            "state_5": 22,
+            "state_6": 29
         }
         self.idx_to_name = {idx: name for name, idx in self.layer_idx.items()}
         for p in self.vgg.parameters():
