@@ -22,7 +22,7 @@ class ContentPatching(nn.Module):
 
     def forward(self, src_img):
         patches = self.patch_embed(src_img)
-        return patch_embeddings
+        return patches
         
 class StylePatching(nn.Module):
     '''
@@ -45,6 +45,6 @@ class StylePatching(nn.Module):
 
     def forward(self, src_img):
         patches = self.patch_embed(src_img)
-        return patch_embeddings
+        return patches
 
         
