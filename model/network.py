@@ -143,8 +143,12 @@ class StyTR2(pl.LightningModule):
         std = var.sqrt().view(b, c, 1, 1)
         mean = feat_flat.mean(dim=2).view(b, c, 1, 1)
         return mean, std
-
-    def loss_fn(self, style, content, stylized, identity_style, identity_content):
+        
+    def normalize(self, feat):
+        mean, std = self.calc_stats(feat)
+        return (feat - mean) / std
+        
+    def loss_fn(self, style, content, stylized, identity_style, identity_content, idx):
         """
         Use this in case the current implementation does not work:
         def loss_fn(self, style, content, stylized):
@@ -193,7 +197,14 @@ class StyTR2(pl.LightningModule):
         f_s = {l: v.detach().cpu() for l, v in f_s.items()}
         f_c = {l: v.detach().cpu() for l, v in f_c.items()}
 
-        c_loss = F.mse_loss(f_t[self.vgg_layers[-1]], f_c[self.vgg_layers[-1]].to(device))
+        c_loss = F.mse_loss(
+            self.normalize(f_t[self.vgg_layers[-1]]),
+            self.normalize(f_c[self.vgg_layers[-1]].to(device))
+        ) + \
+        F.mse_loss(
+            self.normalize(f_t[self.vgg_layers[-2]]),
+            self.normalize(f_c[self.vgg_layers[-2]].to(device))
+        )
         
         # Style loss
         s_loss = 0.0
@@ -202,7 +213,7 @@ class StyTR2(pl.LightningModule):
             mean_t, std_t = self.calc_stats(f_t[l])
             s_loss += F.mse_loss(mean_t, mean_s)
             s_loss += F.mse_loss(std_t, std_s)
-        s_loss /= len(self.vgg_layers)
+        #s_loss /= len(self.vgg_layers)
         del stylized_vgg, f_t  # clear up space
         
         # Identity loss 1
@@ -229,8 +240,7 @@ class StyTR2(pl.LightningModule):
         i_loss2 = 0.0
         for l in self.vgg_layers:
             i_loss2 += F.mse_loss(i_s[l], f_s[l].to(device)) + F.mse_loss(i_c[l], f_c[l].to(device))
-        
-        i_loss2 /= len(self.vgg_layers)
+        #i_loss2 /= len(self.vgg_layers)
         del f_s, f_c, i_s, i_c  # clear up space
         
         # Total loss
@@ -239,25 +249,25 @@ class StyTR2(pl.LightningModule):
         return loss_main
         
 
-    def training_step(self, batch, _):
+    def training_step(self, batch, idx):
         """Compute/log training loss."""
         style, content = batch["style"], batch["content"]
         stylized = self(style, content)
         identity_style = self(style, style)
         identity_content = self(content, content)
         
-        loss = self.loss_fn(style, content, stylized, identity_style, identity_content)
+        loss = self.loss_fn(style, content, stylized, identity_style, identity_content, idx)
         self.log("train_loss", loss, prog_bar=True)
         return loss
 
-    def validation_step(self, batch, _):
+    def validation_step(self, batch, idx):
         """Compute/log validation loss."""
         style, content = batch["style"], batch["content"]
         stylized = self(style, content)
         identity_style = self(style, style)
         identity_content = self(content, content)
         
-        loss = self.loss_fn(style, content, stylized, identity_style, identity_content)
+        loss = self.loss_fn(style, content, stylized, identity_style, identity_content, idx)
         self.log("val_loss", loss, prog_bar=True)
         return loss
 
