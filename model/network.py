@@ -105,10 +105,20 @@ class StyTR2(pl.LightningModule):
         """
         Stylize content using style.
         """
-        # Patching
-        c_patches = self.content_patcher(content)
-        s_patches = self.style_patcher(style)
+        # Patching (add checks for the identity losses)
+        if style.size(-1) == 128:
+            s_patches = self.content_patcher(style)
+        elif style.size(-1) == 512:
+            s_patches = self.style_patcher(style)
+            
+        if content.size(-1) == 128:
+            c_patches = self.content_patcher(content)
+        elif content.size(-1) == 512:
+            c_patches = self.style_patcher(content)
         c_patches = self.cape(c_patches)
+        
+        c_patches = c_patches.flatten(2).permute(0, 2, 1)
+        s_patches = s_patches.flatten(2).permute(0, 2, 1)
 
         # Encoder
         c_enc = self.content_encoder(c_patches)
@@ -119,7 +129,7 @@ class StyTR2(pl.LightningModule):
         tokens = self.decoder(target_tokens=c_enc, memory=s_enc)
         del c_enc, s_enc  # clear up space
         
-        stylized = self.cnn_decoder(tokens)
+        stylized = self.cnn_decoder(tokens)  # reshaping happens internally
         del tokens  # clear up space
         return stylized
     
