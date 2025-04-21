@@ -64,8 +64,8 @@ class StyleTransferDataset(Dataset):
         # Downsample content
         content = F.interpolate(
             content.unsqueeze(0),
-            (128, 128),
-            mode="bicubic",
+            (256, 256),
+            mode="bilinear",
             align_corners=False
         ).squeeze(0)
         sample = {
