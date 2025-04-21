@@ -106,12 +106,12 @@ class StyTR2(pl.LightningModule):
         Stylize content using style.
         """
         # Patching (add checks for the identity losses)
-        if style.size(-1) == 128:
+        if style.size(-1) == 256:
             s_patches = self.content_patcher(style)
         elif style.size(-1) == 512:
             s_patches = self.style_patcher(style)
             
-        if content.size(-1) == 128:
+        if content.size(-1) == 256:
             c_patches = self.content_patcher(content)
         elif content.size(-1) == 512:
             c_patches = self.style_patcher(content)
