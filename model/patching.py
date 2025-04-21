@@ -22,8 +22,6 @@ class ContentPatching(nn.Module):
 
     def forward(self, src_img):
         patches = self.patch_embed(src_img)
-        patches = patches.flatten(2)
-        patch_embeddings = patches.transpose(1,2)
         return patch_embeddings
         
 class StylePatching(nn.Module):
@@ -47,8 +45,6 @@ class StylePatching(nn.Module):
 
     def forward(self, src_img):
         patches = self.patch_embed(src_img)
-        patches = patches.flatten(2)
-        patch_embeddings = patches.transpose(1,2)
         return patch_embeddings
 
         
