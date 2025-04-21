@@ -247,7 +247,7 @@ class StyTR2(pl.LightningModule):
         identity_content = self(content, content)
         
         loss = self.loss_fn(style, content, stylized, identity_style, identity_content)
-        self.log("train_loss", loss_main, prog_bar=True)
+        self.log("train_loss", loss, prog_bar=True)
         return loss
 
     def validation_step(self, batch, _):
