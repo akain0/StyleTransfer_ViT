@@ -1,4 +1,6 @@
 import torch
+import numpy as np
+from os.path import join
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from model.patching import ContentPatching, StylePatching
@@ -46,7 +48,8 @@ class StyTR2(pl.LightningModule):
         lambdas=[10, 7, 50, 1],
         lr_patience=5,
         lr_decay=0.1,
-        betas=(0.9, 0.999)
+        betas=(0.9, 0.999),
+        results_path="predictions"
     ):
         super().__init__()
         # Patching
@@ -94,6 +97,7 @@ class StyTR2(pl.LightningModule):
         self.betas = betas
 
         # Test outputs
+        self.results_path = results_path
         self._test_outputs = {
             "style": [],
             "content": [],
@@ -293,9 +297,10 @@ class StyTR2(pl.LightningModule):
 
     def on_test_epoch_end(self):
         """Concatenate test outputs into test_results."""
-        self.test_results = {}
         for k in self._test_outputs.keys():
-            self.test_results[k] = torch.cat(self._test_outputs[k], dim=0)
+            result = torch.cat(self._test_outputs[k], dim=0).numpy()
+            results_filepath = join(self.results_path, f"{k}.npy")
+            np.save(results_filepath, result)
             self._test_outputs[k].clear()
 
     def configure_optimizers(self):
