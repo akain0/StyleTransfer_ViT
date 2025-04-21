@@ -202,6 +202,7 @@ class StyTR2(pl.LightningModule):
             mean_t, std_t = self.calc_stats(f_t[l])
             s_loss += F.mse_loss(mean_t, mean_s)
             s_loss += F.mse_loss(std_t, std_s)
+        s_loss /= len(self.vgg_layers)
         del stylized_vgg, f_t  # clear up space
         
         # Identity loss 1
@@ -228,6 +229,8 @@ class StyTR2(pl.LightningModule):
         i_loss2 = 0.0
         for l in self.vgg_layers:
             i_loss2 += F.mse_loss(i_s[l], f_s[l].to(device)) + F.mse_loss(i_c[l], f_c[l].to(device))
+        
+        i_loss2 /= len(self.vgg_layers)
         del f_s, f_c, i_s, i_c  # clear up space
         
         # Total loss
