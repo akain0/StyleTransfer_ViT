@@ -6,7 +6,6 @@ from model.cape import CAPE
 from model.encoders import ContentTransformerEncoder, StyleTransformerEncoder
 from model.decoders import TransformerDecoder, CNNDecoder
 from model.vgg import VGGFeatureExtractor
-import gc
 
 class StyTR2(pl.LightningModule):
     """
@@ -122,10 +121,6 @@ class StyTR2(pl.LightningModule):
         
         stylized = self.cnn_decoder(tokens)
         del tokens  # clear up space
-        
-        # Force cleanup memory
-        gc.collect()
-        torch.cuda.empty_cache()
         return stylized
     
     def gram_matrix(self, feat):
@@ -235,10 +230,6 @@ class StyTR2(pl.LightningModule):
             i_loss2 += F.mse_loss(i_s[l], f_s[l].to(device)) + F.mse_loss(i_c[l], f_c[l].to(device))
         del f_s, f_c, i_s, i_c  # clear up space
         
-        # Force cleanup memory
-        gc.collect()
-        torch.cuda.empty_cache()
-        
         # Total loss
         loss_main = (self.lambdas[0] * c_loss) + (self.lambdas[1] * s_loss) + \
                 (self.lambdas[2] * i_loss1) + (self.lambdas[3] * i_loss2)
@@ -273,9 +264,9 @@ class StyTR2(pl.LightningModule):
         stylized = self(style, content)
         
         # Store test results
-        self._test_outputs["style"].append(style)
-        self._test_outputs["content"].append(content)
-        self._test_outputs["stylized"].append(stylized)
+        self._test_outputs["style"].append(style.detach().cpu())
+        self._test_outputs["content"].append(content.detach().cpu())
+        self._test_outputs["stylized"].append(stylized.detach().cpu())
 
     def on_test_epoch_end(self):
         """Concatenate test outputs into test_results."""
