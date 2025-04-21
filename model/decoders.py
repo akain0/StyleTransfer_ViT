@@ -92,9 +92,7 @@ class CNNDecoder(nn.Module):
         grid_w = grid_h = int(np.sqrt(num_tokens))
         
         # Reshape flattened tokens
-        x = x.view(batch_size, grid_h, grid_w, channels)  # Shape: (batch, grid_h, grid_w, C)
-        # Permute to channel-first format
-        x = x.permute(0, 3, 1, 2)   # Shape: (batch, C, grid_h, grid_w)
+        x = x.permute(0, 2, 1).reshape(batch_size, channels, grid_h, grid_w)
         
         # Pass through the three-layer CNN decoder.
         x = self.layer1(x)
