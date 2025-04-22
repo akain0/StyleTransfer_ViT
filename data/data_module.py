@@ -91,12 +91,12 @@ class StyleTransferDM(pl.LightningDataModule):
         """
         return DataLoader(
             self.test_ds,
-            batch_size=self.batch_size,
+            batch_size=30,
             num_workers=self.num_workers,
             prefetch_factor=self.prefetch_factor,
             persistent_workers=self.num_workers > 1,
             shuffle=False,
             pin_memory=self.pin_memory,
             collate_fn=collate_fn,
-            drop_last=False
+            drop_last=True
         )
