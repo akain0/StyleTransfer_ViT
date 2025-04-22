@@ -62,25 +62,45 @@ class CNNDecoder(nn.Module):
             always square.
         """
         super(CNNDecoder, self).__init__()        
-        # First layer: maintains embed_dim channels; upscales by 2.
+        # First layer: embed_dim --> embed_dim//2; upscales by 2.
         self.layer1 = nn.Sequential(
-            nn.Conv2d(embed_dim, embed_dim, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2, mode='nearest')
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(embed_dim, embed_dim//2, (3, 3)),
+            nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(embed_dim//2, embed_dim//2, (3, 3)),
+            nn.ReLU(),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(embed_dim//2, embed_dim//2, (3, 3)),
+            nn.ReLU(),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(embed_dim//2, embed_dim//2, (3, 3)),
+            nn.ReLU()
         )
         
-        # Second layer: maintains embed_dim channels; upscales by 2.
+        # Second layer: embed_dim//2 --> embed_dim//4; upscales by 2.
         self.layer2 = nn.Sequential(
-            nn.Conv2d(embed_dim, embed_dim, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2, mode='nearest')
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(embed_dim//2, embed_dim//4, (3, 3)),
+            nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(embed_dim//4, embed_dim//4, (3, 3)),
+            nn.ReLU()
         )
         
-        # Third layer: converts the feature channels from embed_dim to 3; upscales by 2.
+        # Third layer: embed_dim//4 --> 3; upscales by 2.
         self.layer3 = nn.Sequential(
-            nn.Conv2d(embed_dim, 3, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2, mode='nearest')
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(embed_dim//4, embed_dim//8, (3, 3)),
+            nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(embed_dim//8, embed_dim//8, (3, 3)),
+            nn.ReLU(),
+            nn.ReflectionPad2d((1, 1, 1, 1)),
+            nn.Conv2d(embed_dim//8, 3, (3, 3))
         )
 
     def forward(self, x):
