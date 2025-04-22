@@ -309,6 +309,7 @@ class StyTR2(pl.LightningModule):
 
     def configure_optimizers(self):
         """Setup optimizer and LR scheduler."""
+        """
         opt = torch.optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
         sch = torch.optim.lr_scheduler.ReduceLROnPlateau(
             opt,
@@ -320,3 +321,22 @@ class StyTR2(pl.LightningModule):
             "optimizer": opt,
             "lr_scheduler": {"scheduler": sch, "monitor": "val_loss"}
         }
+        """
+        # Implementation below is from GitHub implementation
+        opt = torch.optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
+
+        def lr_fn(step):
+            # warm‑up phase
+            if step < 1e4:
+                return 0.1 * (1.0 + 3e-4 * step)
+            # decay phase
+            else:
+                lr = 2e-4 / (1.0 + self.lr_decay * (step - 1e4))
+                return lr / self.lr
+
+        scheduler = {
+            'scheduler': torch.optim.lr_scheduler.LambdaLR(opt, lr_fn),
+            'interval': 'step',
+            'frequency': 1,
+        }
+        return {'optimizer': opt, 'lr_scheduler': scheduler}
