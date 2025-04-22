@@ -59,9 +59,18 @@ class StyleTransferDataset(Dataset):
         """
         Return a sample with style and random content image.
         """
-        style = decode_image(self.style_paths[self.all_inds[idx]])
+        style = decode_image(self.style_paths[self.all_inds[idx]]).to(torch.float32)
         content = decode_image(self.content_paths[randrange(self.total_content_images)]).to(torch.float32)
-        # Downsample content
+        
+        # Downsample style
+        style = F.interpolate(
+            style.unsqueeze(0),
+            (256, 256),
+            mode="bilinear",
+            align_corners=False
+        ).squeeze(0)
+        
+        # Upsample content
         content = F.interpolate(
             content.unsqueeze(0),
             (256, 256),
@@ -69,7 +78,7 @@ class StyleTransferDataset(Dataset):
             align_corners=False
         ).squeeze(0)
         sample = {
-            "style_image": style.to(torch.float32),
+            "style_image": style,
             "content_image": content
         }
         return sample
