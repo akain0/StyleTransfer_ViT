@@ -46,5 +46,3 @@ class StylePatching(nn.Module):
     def forward(self, src_img):
         patches = self.patch_embed(src_img)
         return patches
-
-        
