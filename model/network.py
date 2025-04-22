@@ -109,6 +109,7 @@ class StyTR2(pl.LightningModule):
         """
         Stylize content using style.
         """
+        """
         # Patching (add checks for the identity losses)
         if style.size(-1) == 256:
             s_patches = self.content_patcher(style)
@@ -119,13 +120,17 @@ class StyTR2(pl.LightningModule):
             c_patches = self.content_patcher(content)
         elif content.size(-1) == 512:
             c_patches = self.style_patcher(content)
-        c_patches = self.cape(c_patches)
+        """
+        s_patches = self.style_patcher(style)
+        c_patches = self.content_patcher(content)
+        pos_embed = self.cape(c_patches)
+        c_patches = c_patches + pos_embed
         
         c_patches = c_patches.flatten(2).permute(0, 2, 1)
         s_patches = s_patches.flatten(2).permute(0, 2, 1)
 
         # Encoder
-        c_enc = self.content_encoder(c_patches)
+        c_enc = self.content_encoder(c_patches) + pos_embed.flatten(2).permute(0, 2, 1)  # CAPE on content embeddings
         s_enc = self.style_encoder(s_patches)
         del c_patches, s_patches  # clear up space
 
@@ -181,22 +186,21 @@ class StyTR2(pl.LightningModule):
         device = style.device
         
         # Content loss
-        with torch.no_grad():  # no grad because they are targets
-            style_vgg = F.interpolate(
-                style,
-                (self.img_height, self.img_width),
-                mode="bicubic",
-                align_corners=False
-            )  # standardize image dimensions for VGG
-            content_vgg = F.interpolate(
-                content,
-                (self.img_height, self.img_width),
-                mode="bicubic",
-                align_corners=False
-            )  # standardize image dimensions for VGG
-            f_s = self.vgg_extractor(style_vgg)
-            f_c = self.vgg_extractor(content_vgg)
-            del style_vgg, content_vgg  # clear up space
+        style_vgg = F.interpolate(
+            style,
+            (self.img_height, self.img_width),
+            mode="bicubic",
+            align_corners=False
+        )  # standardize image dimensions for VGG
+        content_vgg = F.interpolate(
+            content,
+            (self.img_height, self.img_width),
+            mode="bicubic",
+            align_corners=False
+        )  # standardize image dimensions for VGG
+        f_s = self.vgg_extractor(style_vgg)
+        f_c = self.vgg_extractor(content_vgg)
+        del style_vgg, content_vgg  # clear up space
 
         stylized_vgg = F.interpolate(
             stylized,
@@ -206,28 +210,23 @@ class StyTR2(pl.LightningModule):
         )  # standardize image dimensions for VGG
         
         f_t = self.vgg_extractor(stylized_vgg)
-            
-        # move to CPU to free GPU memory
-        f_s = {l: v.detach().cpu() for l, v in f_s.items()}
-        f_c = {l: v.detach().cpu() for l, v in f_c.items()}
 
         c_loss = F.mse_loss(
             self.normalize(f_t[self.vgg_layers[-1]]),
-            self.normalize(f_c[self.vgg_layers[-1]].to(device))
+            self.normalize(f_c[self.vgg_layers[-1]])
         ) + \
         F.mse_loss(
             self.normalize(f_t[self.vgg_layers[-2]]),
-            self.normalize(f_c[self.vgg_layers[-2]].to(device))
+            self.normalize(f_c[self.vgg_layers[-2]])
         )
         
         # Style loss
         s_loss = 0.0
         for l in self.vgg_layers:
-            mean_s, std_s = self.calc_stats(f_s[l].to(device))
+            mean_s, std_s = self.calc_stats(f_s[l])
             mean_t, std_t = self.calc_stats(f_t[l])
-            s_loss += F.mse_loss(mean_t, mean_s)
-            s_loss += F.mse_loss(std_t, std_s)
-        #s_loss /= len(self.vgg_layers)
+            s_loss = s_loss + F.mse_loss(mean_t, mean_s) + F.mse_loss(std_t, std_s)
+
         del stylized_vgg, f_t  # clear up space
         
         # Identity loss 1
@@ -253,9 +252,14 @@ class StyTR2(pl.LightningModule):
         
         i_loss2 = 0.0
         for l in self.vgg_layers:
-            i_loss2 += F.mse_loss(i_s[l], f_s[l].to(device)) + F.mse_loss(i_c[l], f_c[l].to(device))
-        #i_loss2 /= len(self.vgg_layers)
+            i_loss2 = i_loss2 + F.mse_loss(i_s[l], f_s[l]) + F.mse_loss(i_c[l], f_c[l])
         del f_s, f_c, i_s, i_c  # clear up space
+        
+        if idx % 100 == 0:
+            print(f"[{idx}] Content Loss: {c_loss.item():.4f}, "
+                  f"Style Loss: {s_loss.item():.4f}, "
+                  f"Identity Loss 1: {i_loss1.item():.4f}, "
+                  f"Identity Loss 2: {i_loss2.item():.4f}")
         
         # Total loss
         loss_main = (self.lambdas[0] * c_loss) + (self.lambdas[1] * s_loss) + \
