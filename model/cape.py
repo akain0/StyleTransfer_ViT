@@ -21,6 +21,4 @@ class CAPE(nn.Module):
         
         pos_embed = self.F_pos(self.avg_pool(patch_embs))
         pos_embed = F.interpolate(pos_embed, size=(h, w), mode='bilinear', align_corners=False)
-        
-        embeddings = patch_embs + pos_embed
-        return embeddings
+        return pos_embed
