@@ -14,20 +14,11 @@ class CAPE(nn.Module):
         self.s = s                  
         
         self.F_pos = nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=1)
-        self.avg_pool = nn.AvgPool2d(kernel_size=n)
+        self.avg_pool = nn.AdaptiveAvgPool2d(n)
         
     def forward(self, patch_embs):
-        batch_size, num_patches, embed_dim = patch_embs.shape
+        batch_size, embed_dim, h, w = patch_embs.shape
         
-        h = w = int(np.sqrt(num_patches))
-        patch_embs_2d = patch_embs.transpose(1, 2).view(batch_size, embed_dim, h, w)
-        
-        P_L = self.F_pos(self.avg_pool(patch_embs_2d))
-        
-        P_L_resized = F.interpolate(P_L, size=(h, w), mode='bilinear', align_corners=False)
-        
-        P_CA = P_L_resized.flatten(2).transpose(1, 2)
-        
-        final_embeddings = patch_embs + P_CA
-        
-        return final_embeddings
+        pos_embed = self.F_pos(self.avg_pool(patch_embs))
+        pos_embed = F.interpolate(pos_embed, size=(h, w), mode='bilinear', align_corners=False)
+        return pos_embed
