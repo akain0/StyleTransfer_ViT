@@ -9,17 +9,10 @@ class VGGFeatureExtractor(nn.Module):
     Runs input through VGG19 features and returns a dict of
     layer activations keyed by intuitive names.
     """
-    def __init__(self):
+    def __init__(self, extraction_layers=[8, 15, 20, 26, 31, 35]):
         super().__init__()
         self.vgg = models.vgg19(weights=models.VGG19_Weights.DEFAULT).features
-        self.layer_idx = {
-            "state_1": 1,
-            "state_2": 6,
-            "state_3": 11,
-            "state_4": 20,
-            "state_5": 22,
-            "state_6": 29
-        }
+        self.layer_idx = {f"state_{i}": extraction_layers[i] for i in range(len(extraction_layers))}
         self.idx_to_name = {idx: name for name, idx in self.layer_idx.items()}
         for p in self.vgg.parameters():
             p.requires_grad = False
