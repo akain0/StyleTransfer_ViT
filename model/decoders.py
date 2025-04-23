@@ -15,6 +15,7 @@ class TransformerDecoder(nn.Module):
         dropout = 0.1,
         n_layers = 6
     ):
+
         super(TransformerDecoder, self).__init__()
         self.decoder_layer = nn.TransformerDecoderLayer(
             d_model=d_model,
