@@ -23,6 +23,7 @@ class StyTR2(pl.LightningModule):
         # VGG
         img_height=224,
         img_width=224,
+        extraction_layers=[8, 15, 20, 26, 31, 35],
         # Patching
         n=18,
         s=1,
@@ -84,8 +85,8 @@ class StyTR2(pl.LightningModule):
         self.cnn_decoder = CNNDecoder(embed_dim=d_model)
 
         # VGG
-        self.vgg_extractor = VGGFeatureExtractor()
-        self.vgg_layers = ["state_1", "state_2", "state_3", "state_4", "state_5", "state_6"]
+        self.vgg_extractor = VGGFeatureExtractor(extraction_layers=[8, 15, 20, 26, 31, 35])
+        self.vgg_layers = [f"state_{i}" for i in range(len(extraction_layers))]
 
         # Training params
         self.img_height = img_height
