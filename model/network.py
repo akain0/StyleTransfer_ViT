@@ -53,6 +53,7 @@ class StyTR2(pl.LightningModule):
         results_path="predictions"
     ):
         super().__init__()
+        self.save_hyperparameters()
         # Patching
         self.content_patcher = ContentPatching(3, d_model, patch_size_content)
         self.style_patcher = StylePatching(3, d_model, patch_size_style)
