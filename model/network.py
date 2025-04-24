@@ -103,7 +103,8 @@ class StyTR2(pl.LightningModule):
         self._test_outputs = {
             "style": [],
             "content": [],
-            "stylized": []
+            "stylized": [],
+            "reverse_stylized": []
         }
         self.test_results = None
 
@@ -295,11 +296,13 @@ class StyTR2(pl.LightningModule):
         """Collect stylized outputs."""
         style, content = batch["style"], batch["content"]
         stylized = self(style, content)
+        reverse_stylized = self(content, style)
         
         # Store test results
         self._test_outputs["style"].append(style.detach().cpu())
         self._test_outputs["content"].append(content.detach().cpu())
         self._test_outputs["stylized"].append(stylized.detach().cpu())
+        self._test_outputs["reverse_stylized"].append(reverse_stylized.detach().cpu())
 
     def on_test_epoch_end(self):
         """Concatenate test outputs into test_results."""
