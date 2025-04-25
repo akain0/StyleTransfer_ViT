@@ -221,6 +221,16 @@ class StyTR2(pl.LightningModule):
         )
         return loss_main
         
+    def on_after_backward(self):
+        """Compute the total L2 norm of all gradients."""
+        total_norm_sq = 0.0
+        for p in self.parameters():
+            if p.grad is not None:
+                total_norm_sq += p.grad.data.norm(2).item() ** 2
+        total_norm = total_norm_sq ** 0.5
+
+        if self.global_step % 100 == 0:
+            print(f"[step {self.global_step}] grad_norm: {total_norm:.4f}")
 
     def training_step(self, batch, idx):
         """Compute/log training loss."""
