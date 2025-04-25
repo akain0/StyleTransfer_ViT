@@ -15,7 +15,6 @@ class TransformerDecoder(nn.Module):
         dropout = 0.1,
         n_layers = 6
     ):
-
         super(TransformerDecoder, self).__init__()
         self.decoder_layer = nn.TransformerDecoderLayer(
             d_model=d_model,
@@ -27,7 +26,8 @@ class TransformerDecoder(nn.Module):
         )
         self.transformer_decoder = nn.TransformerDecoder(
             self.decoder_layer,
-            num_layers=n_layers
+            num_layers=n_layers,
+            norm=nn.LayerNorm(d_model)
         )
 
     def forward(
