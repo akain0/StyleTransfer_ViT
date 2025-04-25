@@ -159,7 +159,7 @@ class StyTR2(pl.LightningModule):
         """
         Compute channel‐wise mean and stddev over spatial dims.
         """
-        b, c = feat.size()[:2]
+        b, c, h, w = feat.size()
         feat_flat = feat.view(b, c, -1)
         var = feat_flat.var(dim=2) + eps
         std = var.sqrt().view(b, c, 1, 1)
@@ -172,101 +172,53 @@ class StyTR2(pl.LightningModule):
         
     def loss_fn(self, style, content, stylized, identity_style, identity_content, idx):
         """
-        Use this in case the current implementation does not work:
-        def loss_fn(self, style, content, stylized):
-            # Compute content (MSE) and style (Gram-MSE) losses.
-            f_s = self.vgg_extractor(style)
-            f_c = self.vgg_extractor(content)
-            f_t = self.vgg_extractor(stylized)
-            c_loss = F.mse_loss(f_t[self.content_layer], f_c[self.content_layer])
-            s_loss = 0.0
-            for l in self.style_layers:
-                g_s = self.gram_matrix(f_s[l])
-                g_t = self.gram_matrix(f_t[l])
-                s_loss += F.mse_loss(g_t, g_s)
-            return (self.content_loss_weight * c_loss) + (self.style_loss_weight * s_loss)
+        Compute content, style, and identity losses without resizing to 224×224.
         """
-        device = style.device
-        
-        # Content loss
-        style_vgg = F.interpolate(
-            style,
-            (self.img_height, self.img_width),
-            mode="bicubic",
-            align_corners=False
-        )  # standardize image dimensions for VGG
-        content_vgg = F.interpolate(
-            content,
-            (self.img_height, self.img_width),
-            mode="bicubic",
-            align_corners=False
-        )  # standardize image dimensions for VGG
-        f_s = self.vgg_extractor(style_vgg)
-        f_c = self.vgg_extractor(content_vgg)
-        del style_vgg, content_vgg  # clear up space
-
-        stylized_vgg = F.interpolate(
-            stylized,
-            (self.img_height, self.img_width),
-            mode="bicubic",
-            align_corners=False
-        )  # standardize image dimensions for VGG
-        
-        f_t = self.vgg_extractor(stylized_vgg)
-
-        c_loss = F.mse_loss(
-            self.normalize(f_t[self.vgg_layers[-1]]),
-            self.normalize(f_c[self.vgg_layers[-1]])
-        ) + \
-        F.mse_loss(
-            self.normalize(f_t[self.vgg_layers[-2]]),
-            self.normalize(f_c[self.vgg_layers[-2]])
+        # 1) VGG features
+        f_s = self.vgg_extractor(style)
+        f_c = self.vgg_extractor(content)
+        f_t = self.vgg_extractor(stylized)
+    
+        # 2) Content loss on the two deepest layers
+        c_loss = (
+            F.mse_loss(
+                self.normalize(f_t[self.vgg_layers[-1]]),
+                self.normalize(f_c[self.vgg_layers[-1]])
+            )
+            + F.mse_loss(
+                self.normalize(f_t[self.vgg_layers[-2]]),
+                self.normalize(f_c[self.vgg_layers[-2]])
+            )
         )
-        
-        # Style loss
+    
+        # 3) Style loss across all extracted layers
         s_loss = 0.0
         for l in self.vgg_layers:
             mean_s, std_s = self.calc_stats(f_s[l])
             mean_t, std_t = self.calc_stats(f_t[l])
-            s_loss = s_loss + F.mse_loss(mean_t, mean_s) + F.mse_loss(std_t, std_s)
-
-        del stylized_vgg, f_t  # clear up space
-        
-        # Identity loss 1
+            s_loss += F.mse_loss(mean_t, mean_s) + F.mse_loss(std_t, std_s)
+    
+        # 4) Identity loss 1 (pixel‐level)
         i_loss1 = F.mse_loss(identity_style, style) + F.mse_loss(identity_content, content)
-
-        # Identity loss 2
-        identity_style_vgg = F.interpolate(
-            identity_style,
-            (self.img_height, self.img_width),
-            mode="bicubic",
-            align_corners=False
-        )  # standardize image dimensions for VGG
-        identity_content_vgg = F.interpolate(
-            identity_content,
-            (self.img_height, self.img_width),
-            mode="bicubic",
-            align_corners=False
-        )  # standardize image dimensions for VGG
-        
-        i_s = self.vgg_extractor(identity_style_vgg)
-        i_c = self.vgg_extractor(identity_content_vgg)
-        del identity_style_vgg, identity_content_vgg  # clear up space
-        
+    
+        # 5) Identity loss 2 (feature‐level)
+        i_s = self.vgg_extractor(identity_style)
+        i_c = self.vgg_extractor(identity_content)
         i_loss2 = 0.0
         for l in self.vgg_layers:
-            i_loss2 = i_loss2 + F.mse_loss(i_s[l], f_s[l]) + F.mse_loss(i_c[l], f_c[l])
-        del f_s, f_c, i_s, i_c  # clear up space
-        
+            i_loss2 += F.mse_loss(i_s[l], f_s[l]) + F.mse_loss(i_c[l], f_c[l])
+    
+        # (optional) logging  
         if idx % 100 == 0:
-            print(f"[{idx}] Content Loss: {c_loss.item():.4f}, "
-                  f"Style Loss: {s_loss.item():.4f}, "
-                  f"Identity Loss 1: {i_loss1.item():.4f}, "
-                  f"Identity Loss 2: {i_loss2.item():.4f}")
-        
-        # Total loss
-        loss_main = (self.lambdas[0] * c_loss) + (self.lambdas[1] * s_loss) + \
-                (self.lambdas[2] * i_loss1) + (self.lambdas[3] * i_loss2)
+            print(f"[{idx}] c:{c_loss.item():.4f}  s:{s_loss.item():.4f}  i1:{i_loss1.item():.4f}  i2:{i_loss2.item():.4f}")
+    
+        # 6) Weighted sum
+        loss_main = (
+            self.lambdas[0] * c_loss
+            + self.lambdas[1] * s_loss
+            + self.lambdas[2] * i_loss1
+            + self.lambdas[3] * i_loss2
+        )
         return loss_main
         
 
