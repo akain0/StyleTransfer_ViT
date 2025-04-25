@@ -217,7 +217,7 @@ class StyTR3(pl.LightningModule):
         sep_loss = 0.0
         for l in self.vgg_layers:
             sep_loss = sep_loss + F.relu(
-                self.margin - (f_t[self.vgg_layers[l]].view(B, -1) - f_rt[self.vgg_layers[l]].view(B, -1)).norm(p=2, dim=1)     # distance term
+                self.margin - (f_t[l].view(B, -1) - f_rt[l].view(B, -1)).norm(p=2, dim=1)     # distance term
             ).mean()
     
         # Optional logging
