@@ -46,7 +46,8 @@ class StyTR3(pl.LightningModule):
         n_layers_dec=6,
         # Training
         lr=1e-3,
-        lambdas=[10, 7, 50, 1],
+        lambdas=[10, 7, 50, 1, 10],
+        margin=0.8,
         lr_patience=5,
         lr_decay=0.1,
         betas=(0.9, 0.999),
@@ -93,6 +94,7 @@ class StyTR3(pl.LightningModule):
         self.img_height = img_height
         self.img_width = img_width
         self.lambdas = lambdas
+        self.margin = margin
         self.lr = lr
         self.lr_patience = lr_patience
         self.lr_decay = lr_decay
@@ -174,6 +176,8 @@ class StyTR3(pl.LightningModule):
         """
         Compute content, style, identity, and separability losses without resizing.
         """
+        B = style.size(0)
+        
         # 1) VGG feature extraction (no interpolation)
         f_s = self.vgg_extractor(style)
         f_c = self.vgg_extractor(content)
@@ -210,16 +214,11 @@ class StyTR3(pl.LightningModule):
     
         # 6) Separability loss → penalize similarity between stylized and reverse stylized
         f_rt = self.vgg_extractor(reverse_stylized)
-        sep_loss = (
-            F.mse_loss(
-                self.normalize(f_t[self.vgg_layers[-1]]),
-                self.normalize(f_rt[self.vgg_layers[-1]])
-            )
-            + F.mse_loss(
-                self.normalize(f_t[self.vgg_layers[-2]]),
-                self.normalize(f_rt[self.vgg_layers[-2]])
-            )
-        )
+        sep_loss = 0.0
+        for l in self.vgg_layers:
+            sep_loss = sep_loss + F.relu(
+                self.margin - (f_t[self.vgg_layers[l]].view(B, -1) - f_rt[self.vgg_layers[l]].view(B, -1)).norm(p=2, dim=1)     # distance term
+            ).mean()
     
         # Optional logging
         if idx % 100 == 0:
@@ -235,7 +234,7 @@ class StyTR3(pl.LightningModule):
             + self.lambdas[1] * s_loss
             + self.lambdas[2] * i_loss1
             + self.lambdas[3] * i_loss2
-            - self.lambdas[0] * sep_loss
+            + self.lambdas[4] * sep_loss
         )
         return loss_main
     
@@ -296,17 +295,23 @@ class StyTR3(pl.LightningModule):
 
     def configure_optimizers(self):
         """Setup optimizer and LR scheduler."""
-        """
         opt = torch.optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
         sch = torch.optim.lr_scheduler.ReduceLROnPlateau(
             opt,
             mode="min",
             factor=self.lr_decay,
-            patience=self.lr_patience
+            patience=self.lr_patience,
         )
+        
         return {
             "optimizer": opt,
-            "lr_scheduler": {"scheduler": sch, "monitor": "val_loss"}
+            "lr_scheduler": {
+                "scheduler": sch,
+                "monitor": "train_loss",
+                "interval": "step",
+                "frequency": 1,
+                "reduce_on_plateau": True
+            }
         }
         """
         # Implementation below is from GitHub implementation
@@ -327,3 +332,4 @@ class StyTR3(pl.LightningModule):
             'frequency': 1,
         }
         return {'optimizer': opt, 'lr_scheduler': scheduler}
+        """
