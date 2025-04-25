@@ -256,13 +256,13 @@ class StyTR2(pl.LightningModule):
 
     def test_step(self, batch, _):
         """Collect stylized outputs."""
-        style, content = batch["style"], batch["content"]
+        style, content = batch["style"] * 255.0, batch["content"] * 255.0
         stylized = self(style, content) * 255.0
         reverse_stylized = self(content, style) * 255.0
         
         # Store test results
-        self._test_outputs["style"].append(style.detach().cpu())
-        self._test_outputs["content"].append(content.detach().cpu())
+        self._test_outputs["style"].append((style * 255.0).detach().cpu())
+        self._test_outputs["content"].append((content * 255.0).detach().cpu())
         self._test_outputs["stylized"].append(stylized.detach().cpu())
         self._test_outputs["reverse_stylized"].append(reverse_stylized.detach().cpu())
 
