@@ -51,7 +51,8 @@ class StyTR3(pl.LightningModule):
         lr_patience=5,
         lr_decay=0.1,
         betas=(0.9, 0.999),
-        results_path="predictions"
+        results_path="predictions",
+        training_style="original"
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -99,6 +100,7 @@ class StyTR3(pl.LightningModule):
         self.lr_patience = lr_patience
         self.lr_decay = lr_decay
         self.betas = betas
+        self.training_style = training_style
 
         # Test outputs
         self.results_path = results_path
@@ -211,15 +213,35 @@ class StyTR3(pl.LightningModule):
         i_loss2 = 0.0
         for l in self.vgg_layers:
             i_loss2 += F.mse_loss(i_s[l], f_s[l]) + F.mse_loss(i_c[l], f_c[l])
+        """
+        # 6) Contrastive hinge separability loss
+        f_rt = self.vgg_extractor(reverse_stylized)
+        sep_loss = 0.0
+        for l in self.vgg_layers:
+            # compute means and stds
+            mean_t, std_t   = self.calc_stats(f_t[l])
+            mean_rt, std_rt = self.calc_stats(f_rt[l])
     
-        # 6) Separability loss → penalize similarity between stylized and reverse stylized
+            # flatten to [B, C]
+            diff = f_t[l].view(B, -1) - f_rt[l].view(B, -1)
+            mean_diff = mean_t.view(B, -1) - mean_rt.view(B, -1)
+            std_diff  = std_t.view(B, -1)  - std_rt.view(B, -1)
+    
+            # concatenate stats and original featuers and get squared‐L2 distances
+            stats_diff = torch.cat([mean_diff, std_diff], dim=1)
+            dist2 = torch.cat([diff.pow(2).sum(dim=1).unsqueeze(1), stats_diff.pow(2).sum(dim=1).unsqueeze(1)], dim=1)
+    
+            # squared‐hinge
+            sep_loss = sep_loss + F.relu(self.margin**2 - dist2).mean(dim=0).sum()
+        """
+        # 6) Separability loss
         f_rt = self.vgg_extractor(reverse_stylized)
         sep_loss = 0.0
         for l in self.vgg_layers:
             sep_loss = sep_loss + F.relu(
                 self.margin - (f_t[l].view(B, -1) - f_rt[l].view(B, -1)).norm(p=2, dim=1)     # distance term
             ).mean()
-    
+        
         # Optional logging
         if idx % 100 == 0:
             print(f"[{idx}] c:{c_loss.item():.4f} "
@@ -295,41 +317,44 @@ class StyTR3(pl.LightningModule):
 
     def configure_optimizers(self):
         """Setup optimizer and LR scheduler."""
-        opt = torch.optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
-        sch = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            opt,
-            mode="min",
-            factor=self.lr_decay,
-            patience=self.lr_patience,
-        )
-        
-        return {
-            "optimizer": opt,
-            "lr_scheduler": {
-                "scheduler": sch,
-                "monitor": "train_loss",
-                "interval": "step",
-                "frequency": 1,
-                "reduce_on_plateau": True
+        if self.training_style == "plateau":
+            opt = torch.optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
+            sch = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                opt,
+                mode="min",
+                factor=self.lr_decay,
+                patience=self.lr_patience,
+            )
+            
+            return {
+                "optimizer": opt,
+                "lr_scheduler": {
+                    "scheduler": sch,
+                    "monitor": "train_loss",
+                    "interval": "step",
+                    "frequency": 1,
+                    "reduce_on_plateau": True
+                }
             }
-        }
-        """
-        # Implementation below is from GitHub implementation
-        opt = torch.optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
-
-        def lr_fn(step):
-            # warm‑up phase
-            if step < 1e4:
-                return 0.1 * (1.0 + 3e-4 * step)
-            # decay phase
-            else:
-                lr = 2e-4 / (1.0 + self.lr_decay * (step - 1e4))
-                return lr / self.lr
-
-        scheduler = {
-            'scheduler': torch.optim.lr_scheduler.LambdaLR(opt, lr_fn),
-            'interval': 'step',
-            'frequency': 1,
-        }
-        return {'optimizer': opt, 'lr_scheduler': scheduler}
-        """
+        elif self.training_style == "original":
+            # Implementation below is from GitHub implementation
+            opt = torch.optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
+    
+            def lr_fn(step):
+                # warm‑up phase
+                if step < 1e4:
+                    return 0.1 * (1.0 + 3e-4 * step)
+                # decay phase
+                else:
+                    lr = 2e-4 / (1.0 + self.lr_decay * (step - 1e4))
+                    return lr / self.lr
+    
+            scheduler = {
+                'scheduler': torch.optim.lr_scheduler.LambdaLR(opt, lr_fn),
+                'interval': 'step',
+                'frequency': 1,
+            }
+            return {'optimizer': opt, 'lr_scheduler': scheduler}
+        else:
+            raise ValueError(f"Invalid input to training_style: {self.training_style}")
+        
