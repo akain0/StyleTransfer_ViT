@@ -23,6 +23,7 @@ class StyleTransferDataset(Dataset):
         super().__init__()
         self.num_styles_per_image = num_styles_per_image
         self.style_paths = {}
+        self.rng = np.random.default_rng(42)
 
         # Load style image paths
         style_paths = glob.glob(os.path.join(style_dir, '*.jpg'))
@@ -46,7 +47,7 @@ class StyleTransferDataset(Dataset):
         """
         base_inds = np.arange(self.total_content_images)
         all_inds = np.repeat(base_inds, self.num_styles_per_image)
-        np.random.shuffle(all_inds)
+        self.rng.shuffle(all_inds)
         return all_inds
 
     def __len__(self):
