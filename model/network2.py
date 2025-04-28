@@ -102,6 +102,7 @@ class StyTR3(pl.LightningModule):
         self.lr_decay = lr_decay
         self.betas = betas
         self.training_style = training_style
+        self.sep_loss_version = sep_loss_version
 
         # Test outputs
         self.results_path = results_path
@@ -215,7 +216,7 @@ class StyTR3(pl.LightningModule):
         for l in self.vgg_layers:
             i_loss2 += F.mse_loss(i_s[l], f_s[l]) + F.mse_loss(i_c[l], f_c[l])
             
-        if sep_loss_version == "style_content":
+        if self.sep_loss_version == "style_content":
             # 6) Contrastive hinge separability loss
             f_rt = self.vgg_extractor(reverse_stylized)
             sep_loss = 0.0
@@ -235,7 +236,7 @@ class StyTR3(pl.LightningModule):
         
                 # squared‐hinge
                 sep_loss = sep_loss + F.relu(self.margin**2 - dist2).mean(dim=0).sum()
-        elif sep_loss_version == "content":
+        elif self.sep_loss_version == "content":
             # 6) Separability loss
             f_rt = self.vgg_extractor(reverse_stylized)
             sep_loss = 0.0
@@ -244,7 +245,7 @@ class StyTR3(pl.LightningModule):
                     self.margin - (f_t[l].view(B, -1) - f_rt[l].view(B, -1)).norm(p=2, dim=1)     # distance term
                 ).mean()
         else:
-            raise ValueError(f"Invalid sep_loss version provided: '{sep_loss_version}''.\n Choose from 'style_content' and 'content'")
+            raise ValueError(f"Invalid sep_loss version provided: '{self.sep_loss_version}''.\n Choose from 'style_content' and 'content'")
             
         
         # Optional logging
