@@ -52,7 +52,8 @@ class StyTR3(pl.LightningModule):
         lr_decay=0.1,
         betas=(0.9, 0.999),
         results_path="predictions",
-        training_style="original"
+        training_style="original",
+        sep_loss_version="style_content"
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -213,34 +214,38 @@ class StyTR3(pl.LightningModule):
         i_loss2 = 0.0
         for l in self.vgg_layers:
             i_loss2 += F.mse_loss(i_s[l], f_s[l]) + F.mse_loss(i_c[l], f_c[l])
-        """
-        # 6) Contrastive hinge separability loss
-        f_rt = self.vgg_extractor(reverse_stylized)
-        sep_loss = 0.0
-        for l in self.vgg_layers:
-            # compute means and stds
-            mean_t, std_t   = self.calc_stats(f_t[l])
-            mean_rt, std_rt = self.calc_stats(f_rt[l])
-    
-            # flatten to [B, C]
-            diff = f_t[l].view(B, -1) - f_rt[l].view(B, -1)
-            mean_diff = mean_t.view(B, -1) - mean_rt.view(B, -1)
-            std_diff  = std_t.view(B, -1)  - std_rt.view(B, -1)
-    
-            # concatenate stats and original featuers and get squared‐L2 distances
-            stats_diff = torch.cat([mean_diff, std_diff], dim=1)
-            dist2 = torch.cat([diff.pow(2).sum(dim=1).unsqueeze(1), stats_diff.pow(2).sum(dim=1).unsqueeze(1)], dim=1)
-    
-            # squared‐hinge
-            sep_loss = sep_loss + F.relu(self.margin**2 - dist2).mean(dim=0).sum()
-        """
-        # 6) Separability loss
-        f_rt = self.vgg_extractor(reverse_stylized)
-        sep_loss = 0.0
-        for l in self.vgg_layers:
-            sep_loss = sep_loss + F.relu(
-                self.margin - (f_t[l].view(B, -1) - f_rt[l].view(B, -1)).norm(p=2, dim=1)     # distance term
-            ).mean()
+            
+        if sep_loss_version == "style_content":
+            # 6) Contrastive hinge separability loss
+            f_rt = self.vgg_extractor(reverse_stylized)
+            sep_loss = 0.0
+            for l in self.vgg_layers:
+                # compute means and stds
+                mean_t, std_t   = self.calc_stats(f_t[l])
+                mean_rt, std_rt = self.calc_stats(f_rt[l])
+        
+                # flatten to [B, C]
+                diff = f_t[l].view(B, -1) - f_rt[l].view(B, -1)
+                mean_diff = mean_t.view(B, -1) - mean_rt.view(B, -1)
+                std_diff  = std_t.view(B, -1)  - std_rt.view(B, -1)
+        
+                # concatenate stats and original featuers and get squared‐L2 distances
+                stats_diff = torch.cat([mean_diff, std_diff], dim=1)
+                dist2 = torch.cat([diff.pow(2).sum(dim=1).unsqueeze(1), stats_diff.pow(2).sum(dim=1).unsqueeze(1)], dim=1)
+        
+                # squared‐hinge
+                sep_loss = sep_loss + F.relu(self.margin**2 - dist2).mean(dim=0).sum()
+        elif sep_loss_version == "content":
+            # 6) Separability loss
+            f_rt = self.vgg_extractor(reverse_stylized)
+            sep_loss = 0.0
+            for l in self.vgg_layers:
+                sep_loss = sep_loss + F.relu(
+                    self.margin - (f_t[l].view(B, -1) - f_rt[l].view(B, -1)).norm(p=2, dim=1)     # distance term
+                ).mean()
+        else:
+            raise ValueError(f"Invalid sep_loss version provided: '{sep_loss_version}''.\n Choose from 'style_content' and 'content'")
+            
         
         # Optional logging
         if idx % 100 == 0:
