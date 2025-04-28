@@ -48,9 +48,12 @@ class StyleTransferDM(pl.LightningDataModule):
             self.content_dir,
             num_styles_per_image=self.num_styles_per_image
         )
+        
+        g = torch.Generator().manual_seed(42)
         self.train_ds, self.val_ds, self.test_ds = random_split(
             full_ds,
-            self.train_val_test_split
+            self.train_val_test_split,
+            generator=g
         )
 
     def train_dataloader(self):
