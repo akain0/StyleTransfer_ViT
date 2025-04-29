@@ -345,7 +345,16 @@ class StyTR3(pl.LightningModule):
         elif self.training_style == "original":
             # Implementation below is from GitHub implementation
             opt = torch.optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
-    
+            
+            def lr_fn(step):
+                if step < 1e4:
+                    warmup_multiplier = 0.1 * (1.0 + 3e-4 * step)
+                    return warmup_multiplier
+                else:
+                    decay_multiplier = 1.0 / (1.0 + self.lr_decay * (step - 1e4))
+                    return decay_multiplier
+
+            """
             def lr_fn(step):
                 # warm‑up phase
                 if step < 1e4:
@@ -354,7 +363,7 @@ class StyTR3(pl.LightningModule):
                 else:
                     lr = 2e-4 / (1.0 + self.lr_decay * (step - 1e4))
                     return lr / self.lr
-    
+            """
             scheduler = {
                 'scheduler': torch.optim.lr_scheduler.LambdaLR(opt, lr_fn),
                 'interval': 'step',
