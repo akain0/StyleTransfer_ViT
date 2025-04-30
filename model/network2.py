@@ -242,7 +242,7 @@ class StyTR3(pl.LightningModule):
             sep_loss = 0.0
             for l in self.vgg_layers:
                 sep_loss = sep_loss + F.relu(
-                    self.margin - (f_t[l].view(B, -1) - f_rt[l].view(B, -1)).norm(p=2, dim=1)     # distance term
+                    self.margin**2 - (f_t[l].view(B, -1) - f_rt[l].view(B, -1)).norm(p=2, dim=1)     # distance term
                 ).mean()
         else:
             raise ValueError(f"Invalid sep_loss version provided: '{self.sep_loss_version}''.\n Choose from 'style_content' and 'content'")
@@ -365,11 +365,10 @@ class StyTR3(pl.LightningModule):
                     return lr / self.lr
             """
             scheduler = {
-                'scheduler': torch.optim.lr_scheduler.LambdaLR(opt, lr_fn),
+                'scheduler': torch.optim.lr_scheduler.LambdaLR(opt, lr_fn), 
                 'interval': 'step',
                 'frequency': 1,
             }
             return {'optimizer': opt, 'lr_scheduler': scheduler}
         else:
             raise ValueError(f"Invalid input to training_style: {self.training_style}")
-        
