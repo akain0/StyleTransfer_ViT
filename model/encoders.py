@@ -55,4 +55,3 @@ class StyleTransformerEncoder(nn.Module):
     def forward(self, style_patches):
         out = self.transformer_encoder(style_patches)
         return out
-        
