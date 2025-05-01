@@ -2,6 +2,8 @@
 
 This repository implements and extends the StyTr² architecture for neural style transfer using Vision Transformers. Our work focuses on improving robustness under challenging style inputs—particularly abstract art—by introducing novel separability loss functions.
 
+<img width="654" alt="Screenshot 2025-04-30 at 5 10 34 PM" src="https://github.com/user-attachments/assets/b6951fa6-ad13-4ee3-99e6-888367ecea3f" />
+
 ## Overview
 
 Neural style transfer synthesizes images that combine the structural content of one image with the artistic style of another. Transformer-based approaches like StyTr² achieve high fidelity but can produce noisy outputs or struggle with abstract styles. We address these issues by adding two explicit separability losses—**L_sep1** and **L_sep2**—which encourage content and style features to occupy distinct subspaces during training.
