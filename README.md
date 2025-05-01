@@ -68,4 +68,4 @@ All functionality is contained within the notebook. Simply open a Jupyter enviro
   Dataset preparation; implemented CAPE, transformer encoders, and patching; explored L1 loss alternatives.
 
 - **Tyler J. Church**  
-  Developed transformer and CNN decoders; managed hyperparameter testing; integrated data modules; helped author the final report.
+  Developed transformer and CNN decoders; managed hyperparameter testing; integrated data modules.
