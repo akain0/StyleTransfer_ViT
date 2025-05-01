@@ -3,7 +3,7 @@
 This repository implements and extends the StyTr² architecture for neural style transfer using Vision Transformers. Our work focuses on improving robustness under challenging style inputs—particularly abstract art—by introducing novel separability loss functions.
 
 <p align="center">
-<img width="654" alt="Screenshot 2025-04-30 at 5 10 34 PM" src="https://github.com/user-attachments/assets/b6951fa6-ad13-4ee3-99e6-888367ecea3f" />
+  <img width="654" alt="Screenshot 2025-04-30 at 5 10 34 PM" src="https://github.com/user-attachments/assets/b6951fa6-ad13-4ee3-99e6-888367ecea3f" />
 </p>
 
 ## Overview
@@ -50,7 +50,7 @@ Both datasets are public, diverse, and high-quality.
 Here are some example visualizations from our best models:
 
 <p align="center">
-![final_images](https://github.com/user-attachments/assets/02809a12-d17a-420f-85f6-8d110bf05f3f)
+  <img width="755" alt="Screenshot 2025-04-30 at 5 13 12 PM" src="https://github.com/user-attachments/assets/ef625eda-2024-4b6f-8a93-b83e9bf068e8" />
 </p>
 
 ## Setup & Usage
