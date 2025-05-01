@@ -68,7 +68,7 @@ Here are some example visualizations from our best models:
 ## Authors
 
 - **Chaitanya Tatipigari**  
-  Project lead; proposed separability losses; implemented L_sep1 & L_sep2; PyTorch Lightning setup; VGG19 feature extractor.
+  Project lead; proposed separability losses; implemented $\mathcal{L}_{sep1}$ $\mathcal{L}_{sep2}$; PyTorch Lightning setup; VGG19 feature extractor.
 
 - **Alec Kain**  
   Dataset preparation; implemented CAPE, transformer encoders, and patching; explored L1 loss alternatives.
