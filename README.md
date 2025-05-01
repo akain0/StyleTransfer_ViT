@@ -43,6 +43,10 @@ Both datasets are public, diverse, and high-quality.
 - **L_sep1** yields the best content preservation and fastest convergence.  
 - **L_sep2** improves resilience to noise under abstract styles.
 
+Here are some example visualizations from our best models:
+![final_images](https://github.com/user-attachments/assets/02809a12-d17a-420f-85f6-8d110bf05f3f)
+
+
 ## Setup & Usage
 
 - **Dependencies**  
