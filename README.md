@@ -53,8 +53,19 @@ Here are some example visualizations from our best models:
   All required packages are installed automatically when you open the notebook in Colab. See `requirements.txt` for a static list.
 
 - **Running in Colab**  
-  1. Upload `training_pipeline.ipynb` to Colab.  
-  2. Run all cells—initial cells install dependencies.  
+  1. Upload `training_pipeline.ipynb` to Colab.
+  2. Run all cells—initial cells install dependencies.
   3. Follow the notebook prompts to train or evaluate models.
 
 All functionality is contained within the notebook. Simply open a Jupyter environment and the training pipeline is setup with all necessary hyperparameters.
+
+## Authors
+
+- **Chaitanya Tatipigari**  
+  Project lead; proposed separability losses; implemented L_sep1 & L_sep2; PyTorch Lightning setup; VGG19 feature extractor.
+
+- **Alec Kain**  
+  Dataset preparation; implemented CAPE, transformer encoders, and patching; explored L1 loss alternatives.
+
+- **Tyler J. Church**  
+  Developed transformer and CNN decoders; managed hyperparameter testing; integrated data modules; helped author the final report.
