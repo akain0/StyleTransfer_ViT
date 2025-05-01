@@ -36,6 +36,18 @@ Neural style transfer synthesizes images that combine the structural content of 
 
 Both datasets are public, diverse, and high-quality.
 
+## Setup & Usage
+
+- **Dependencies**  
+  All required packages are installed automatically when you open the notebook in Colab. See `requirements.txt` for a static list.
+
+- **Running in Colab**  
+  1. Upload `training_pipeline.ipynb` to Colab.
+  2. Run all cells—initial cells install dependencies.
+  3. Follow the notebook prompts to train or evaluate models.
+
+All functionality is contained within the notebook. Simply open a Jupyter environment and the training pipeline is setup with all necessary hyperparameters.
+
 ## Results
 
 | Model           | Content Loss (Lₙ) | Style Loss (Lₛ) |
@@ -52,18 +64,6 @@ Here are some example visualizations from our best models:
 <p align="center">
   <img width="755" alt="Screenshot 2025-04-30 at 5 13 12 PM" src="https://github.com/user-attachments/assets/ef625eda-2024-4b6f-8a93-b83e9bf068e8" />
 </p>
-
-## Setup & Usage
-
-- **Dependencies**  
-  All required packages are installed automatically when you open the notebook in Colab. See `requirements.txt` for a static list.
-
-- **Running in Colab**  
-  1. Upload `training_pipeline.ipynb` to Colab.
-  2. Run all cells—initial cells install dependencies.
-  3. Follow the notebook prompts to train or evaluate models.
-
-All functionality is contained within the notebook. Simply open a Jupyter environment and the training pipeline is setup with all necessary hyperparameters.
 
 ## Authors
 
