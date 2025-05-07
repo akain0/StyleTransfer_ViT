@@ -71,7 +71,7 @@ Here are some example visualizations from our best models:
   Project lead; proposed separability losses; implemented L_sep1 and L_sep2; PyTorch Lightning setup; VGG19 feature extractor.
 
 - **Alec Kain**  
-  Dataset preparation; implemented CAPE, transformer encoders, and patching; explored L1 loss alternatives.
+  Dataset preparation; conceptualized separability loss mechanism; implemented CAPE, transformer encoders, and patching; explored L1 loss alternatives.
 
 - **Tyler J. Church**  
   Developed transformer and CNN decoders; managed hyperparameter testing; integrated data modules.
