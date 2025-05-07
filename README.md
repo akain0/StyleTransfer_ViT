@@ -1,6 +1,6 @@
 # Robust Style Transfer with Transformers
 
-This repository implements and extends the StyTr² architecture for neural style transfer using Vision Transformers. Our work focuses on improving robustness under challenging style inputs—particularly abstract art—by introducing novel separability loss functions.
+This repository implements and extends the StyTr² architecture for neural style transfer using Vision Transformers. Our work focuses on improving robustness under challenging style inputs—particularly abstract art—by introducing novel separability loss functions. Our paper can be found in the repository as 'Style_Transfer_ViT.pdf'.
 
 <p align="center">
   <img width="654" alt="Screenshot 2025-04-30 at 5 10 34 PM" src="https://github.com/user-attachments/assets/b6951fa6-ad13-4ee3-99e6-888367ecea3f" />
